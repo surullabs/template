@@ -226,6 +226,13 @@ var (
 	bigUint = fmt.Sprintf("0x%x", uint(1<<uint(reflect.TypeOf(0).Bits()-1)))
 )
 
+var strictExecTests = []execTest{
+	{"map .NO", "{{.MSI.NO}}", "", tVal, false},
+	{".Method3(nil value)", "-{{.Method3 .MXI.unset}}-", "-", tVal, false},
+	{"if map unset", "{{if .MXI.none}}NON-ZERO{{else}}ZERO{{end}}", "", tVal, false},
+	{"if map not unset", "{{if not .MXI.none}}ZERO{{else}}NON-ZERO{{end}}", "", tVal, false},
+}
+
 var execTests = []execTest{
 	// Trivial cases.
 	{"empty", "", "", nil, true},
@@ -237,7 +244,7 @@ var execTests = []execTest{
 	{"ideal float", "{{typeOf 1.0}}", "float64", 0, true},
 	{"ideal exp float", "{{typeOf 1e1}}", "float64", 0, true},
 	{"ideal complex", "{{typeOf 1i}}", "complex128", 0, true},
-	{"ideal int", "{{typeOf " + bigInt + "}}", "int", 0, true},
+	{"ideal big int", "{{typeOf " + bigInt + "}}", "int", 0, true},
 	{"ideal too big", "{{typeOf " + bigUint + "}}", "", 0, false},
 	{"ideal nil without type", "{{nil}}", "", 0, false},
 
@@ -398,7 +405,7 @@ var execTests = []execTest{
 		"&lt;script&gt;alert(&#34;XSS&#34;);&lt;/script&gt;", nil, true},
 	{"html pipeline", `{{printf "<script>alert(\"XSS\");</script>" | html}}`,
 		"&lt;script&gt;alert(&#34;XSS&#34;);&lt;/script&gt;", nil, true},
-	{"html", `{{html .PS}}`, "a string", tVal, true},
+	{"html string", `{{html .PS}}`, "a string", tVal, true},
 
 	// JavaScript.
 	{"js", `{{js .}}`, `It\'d be nice.`, `It'd be nice.`, true},
@@ -624,6 +631,23 @@ func testExecute(execTests []execTest, template *Template, t *testing.T) {
 			t.Errorf("%s: expected\n\t%q\ngot\n\t%q", test.name, test.output, result)
 		}
 	}
+}
+
+func TestExecuteStrict(t *testing.T) {
+	strictTests := make(map[string]*execTest)
+	for i := range strictExecTests {
+		strict := &strictExecTests[i]
+		strictTests[strict.name] = strict
+	}
+	override := make([]execTest, len(execTests))
+	for i := range execTests {
+		if strict, ok := strictTests[execTests[i].name]; ok {
+			override[i] = *strict
+		} else {
+			override[i] = execTests[i]
+		}
+	}
+	testExecute(override, New("strict").Strict(true), t)
 }
 
 func TestExecute(t *testing.T) {

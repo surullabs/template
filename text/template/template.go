@@ -18,6 +18,7 @@ type common struct {
 	// expose reflection to the client.
 	parseFuncs FuncMap
 	execFuncs  map[string]reflect.Value
+	strict     bool
 }
 
 // Template is the representation of a parsed template. The *parse.Tree
@@ -43,6 +44,14 @@ func (t *Template) Name() string {
 	return t.name
 }
 
+// Strict toggles strict execution for map values. Enabling strict execution will result
+// in errors for invalid map entries instead of printing <no value>.
+func (t *Template) Strict(strict bool) *Template {
+	t.init()
+	t.strict = strict
+	return t
+}
+
 // New allocates a new template associated with the given one and with the same
 // delimiters. The association, which is transitive, allows one template to
 // invoke another with a {{template}} action.
@@ -62,6 +71,7 @@ func (t *Template) init() {
 		t.tmpl = make(map[string]*Template)
 		t.parseFuncs = make(FuncMap)
 		t.execFuncs = make(map[string]reflect.Value)
+		t.strict = false
 	}
 }
 
